@@ -2,7 +2,7 @@ import { createCallerFactory, createTRPCRouter, publicProcedure } from "./trpc";
 
 export const appRouter = createTRPCRouter({
     health: publicProcedure.query(() => {
-        return { status: "OK", timestamps: Date.now() };
+        return { status: "ok", timestamps: Date.now() };
     }),
 });
 
