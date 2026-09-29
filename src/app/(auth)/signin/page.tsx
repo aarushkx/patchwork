@@ -47,13 +47,15 @@ const SignInPage = () => {
         setError("");
         setGithubLoading(true);
 
-        await signIn.social({
+        const res = await signIn.social({
             provider: "github",
             callbackURL: "/repos",
         });
 
-        // In case the redirect does not happen
-        setGithubLoading(false);
+        if (res.error) {
+            setError(res.error.message || "Failed to sign in with GitHub");
+            setGithubLoading(false);
+        }
     };
 
     const loading = emailLoading || githubLoading;

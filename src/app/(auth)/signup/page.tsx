@@ -52,12 +52,15 @@ const SignUpPage = () => {
         setError("");
         setGithubLoading(true);
 
-        await signIn.social({
+        const res = await signIn.social({
             provider: "github",
             callbackURL: "/repos",
         });
 
-        setGithubLoading(false);
+        if (res.error) {
+            setError(res.error.message || "Failed to sign up with GitHub");
+            setGithubLoading(false);
+        }
     };
 
     const loading = emailLoading || githubLoading;
