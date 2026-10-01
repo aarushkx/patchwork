@@ -2,6 +2,11 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/server/db";
 import { account } from "@/server/db/schema";
 
+export interface GitHubUser {
+    login: string;
+    avatar_url: string;
+}
+
 export interface GitHubRepo {
     id: number;
     name: string;
@@ -12,6 +17,29 @@ export interface GitHubRepo {
     language: string | null;
     stargazers_count: number;
     updated_at: string;
+}
+
+export interface GitHubPullRequest {
+    id: number;
+    number: number;
+    title: string;
+    state: "open" | "closed";
+    html_url: string;
+    user: GitHubUser;
+    created_at: string;
+    updated_at: string;
+    merged_at: string | null;
+    draft: boolean;
+    head: {
+        ref: string;
+        sha: string;
+    };
+    base: {
+        ref: string;
+    };
+    additions: number;
+    deletions: number;
+    changed_files: number;
 }
 
 export async function getGithubAccessToken(
@@ -60,4 +88,61 @@ export async function fetchGitHubRepos(
     }
 
     return repos;
+}
+
+export async function fetchAllPullRequests(
+    accessToken: string,
+    owner: string,
+    repo: string,
+    state: "open" | "closed" | "all" = "open",
+): Promise<GitHubPullRequest[]> {
+    const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls?state=${state}&per_page=30&sort=updated&direction=desc`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/vnd.github.v3+json",
+            },
+        },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to fetch GitHub pull requests: ${response.status}`,
+        );
+    }
+
+    const pulls = (await response.json()) as GitHubPullRequest[];
+    const detailed = await Promise.all(
+        pulls.map((pr) =>
+            fetchPullRequest(accessToken, owner, repo, pr.number),
+        ),
+    );
+
+    return detailed;
+}
+
+export async function fetchPullRequest(
+    accessToken: string,
+    owner: string,
+    repo: string,
+    prNumber: number,
+): Promise<GitHubPullRequest> {
+    const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/vnd.github.v3+json",
+            },
+        },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to fetch GitHub pull request: ${response.status}`,
+        );
+    }
+
+    return (await response.json()) as GitHubPullRequest;
 }
