@@ -42,7 +42,25 @@ export interface GitHubPullRequest {
     changed_files: number;
 }
 
-export async function getGithubAccessToken(
+export interface GitHubPullRequestFile {
+    sha: string;
+    filename: string;
+    status:
+        | "added"
+        | "removed"
+        | "modified"
+        | "renamed"
+        | "copied"
+        | "changed"
+        | "unchanged";
+    additions: number;
+    deletions: number;
+    changes: number;
+    patch?: string;
+    previous_filename?: string;
+}
+
+export async function getGitHubAccessToken(
     userId: string,
 ): Promise<string | null> {
     const result = await db
@@ -145,4 +163,41 @@ export async function fetchPullRequest(
     }
 
     return (await response.json()) as GitHubPullRequest;
+}
+
+export async function fetchPullRequestFiles(
+    accessToken: string,
+    owner: string,
+    repo: string,
+    prNumber: number,
+): Promise<GitHubPullRequestFile[]> {
+    const files: GitHubPullRequestFile[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    while (true) {
+        const response = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/vnd.github.v3+json",
+                },
+            },
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to fetch GitHub pull request files: ${response.status}`,
+            );
+        }
+
+        const data = (await response.json()) as GitHubPullRequestFile[];
+        files.push(...data);
+
+        if (data.length < perPage) break;
+        page++;
+    }
+
+    return files;
 }

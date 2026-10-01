@@ -6,7 +6,8 @@ import { repository, review } from "@/server/db/schema";
 import {
     fetchAllPullRequests,
     fetchPullRequest,
-    getGithubAccessToken,
+    fetchPullRequestFiles,
+    getGitHubAccessToken,
 } from "@/services/github";
 
 export const pullRequestRouter = createTRPCRouter({
@@ -39,7 +40,7 @@ export const pullRequestRouter = createTRPCRouter({
                 });
             }
 
-            const accessToken = await getGithubAccessToken(ctx.user.id);
+            const accessToken = await getGitHubAccessToken(ctx.user.id);
 
             if (!accessToken) {
                 throw new TRPCError({
@@ -139,7 +140,7 @@ export const pullRequestRouter = createTRPCRouter({
                 });
             }
 
-            const accessToken = await getGithubAccessToken(ctx.user.id);
+            const accessToken = await getGitHubAccessToken(ctx.user.id);
             if (!accessToken) {
                 throw new TRPCError({
                     code: "PRECONDITION_FAILED",
@@ -200,5 +201,66 @@ export const pullRequestRouter = createTRPCRouter({
             };
         }),
 
-    // TODO: Get Pull Request Files
+    // Get Pull Request Files
+    files: protectedProcedure
+        .input(
+            z.object({
+                repositoryId: z.string(),
+                prNumber: z.number(),
+            }),
+        )
+        .query(async ({ ctx, input }) => {
+            const repositoryResult = await ctx.db
+                .select()
+                .from(repository)
+                .where(
+                    and(
+                        eq(repository.id, input.repositoryId),
+                        eq(repository.userId, ctx.user.id),
+                    ),
+                )
+                .limit(1);
+
+            const repo = repositoryResult[0];
+            if (!repo) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Repository not found",
+                });
+            }
+
+            const accessToken = await getGitHubAccessToken(ctx.user.id);
+            if (!accessToken) {
+                throw new TRPCError({
+                    code: "PRECONDITION_FAILED",
+                    message: "GitHub account not connected",
+                });
+            }
+
+            const [owner, repoName] = repo.fullName.split("/");
+            if (!owner || !repoName) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Invalid repository name",
+                });
+            }
+
+            const files = await fetchPullRequestFiles(
+                accessToken,
+                owner,
+                repoName,
+                input.prNumber,
+            );
+
+            return files.map((file) => ({
+                sha: file.sha,
+                filename: file.filename,
+                status: file.status,
+                additions: file.additions,
+                deletions: file.deletions,
+                changes: file.changes,
+                patch: file.patch,
+                previousFilename: file.previous_filename,
+            }));
+        }),
 });

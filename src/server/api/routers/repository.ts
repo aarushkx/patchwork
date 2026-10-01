@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { repository } from "@/server/db/schema";
-import { fetchGitHubRepos, getGithubAccessToken } from "@/services/github";
+import { fetchGitHubRepos, getGitHubAccessToken } from "@/services/github";
 
 export const repositoryRouter = createTRPCRouter({
     // List connected repos
@@ -19,7 +19,7 @@ export const repositoryRouter = createTRPCRouter({
 
     // Fetch repos from GitHub
     fetchFromGithub: protectedProcedure.query(async ({ ctx }) => {
-        const accessToken = await getGithubAccessToken(ctx.user.id);
+        const accessToken = await getGitHubAccessToken(ctx.user.id);
         if (!accessToken) {
             throw new TRPCError({
                 code: "PRECONDITION_FAILED",
