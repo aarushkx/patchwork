@@ -8,7 +8,7 @@ import {
     fetchPullRequest,
     fetchPullRequestFiles,
     getGitHubAccessToken,
-} from "@/services/github";
+} from "@/server/services/github";
 
 export const pullRequestRouter = createTRPCRouter({
     // List Pull Requests

@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { repository } from "@/server/db/schema";
-import { fetchGitHubRepos, getGitHubAccessToken } from "@/services/github";
+import { fetchGitHubRepos, getGitHubAccessToken } from "@/server/services/github";
 
 export const repositoryRouter = createTRPCRouter({
     // List connected repos
